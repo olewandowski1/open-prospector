@@ -37,7 +37,7 @@ export function buildReportPrompt(brief: DiscoveryBrief): string {
     "",
     `Search the public web for: ${brief.query}.`,
     `The market is ${brief.category} in ${brief.searchAreaName}; search in ${brief.searchLanguage}.`,
-    `Aim to identify around ${brief.wanted} distinct businesses.`,
+    `Aim to identify around ${brief.wanted} distinct ${brief.wanted === 1 ? "business" : "businesses"}.`,
     "",
     "Write a report of what you found. For each business, on its own block, give:",
     "  - the business name exactly as it publishes it",

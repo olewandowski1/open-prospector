@@ -37,7 +37,7 @@ describe("buildReportPrompt", () => {
     })
 
     expect(prompt).toContain("Search the public web for: Kwiaciarnia Stokrotka Reda.")
-    expect(prompt).toContain("Aim to identify around 1 distinct businesses.")
+    expect(prompt).toContain("Aim to identify around 1 distinct business.")
   })
 })
 

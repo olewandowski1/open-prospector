@@ -41,8 +41,9 @@ attached.
 ## Cost
 
 One report call and one structure call, only for otherwise-eligible businesses with no contact
-route. The measured runs spent nothing on the first (every business carried a route after
-verification) and seven searches on the second. It is the same order as ADR 0018's absence
+route. In the two runs after the change, one spent seven searches across sixteen discovered
+businesses and the other spent one across twelve, and three of the seven confirmed a route that
+changed the business from excluded to a candidate. It is the same order as ADR 0018's absence
 confirmation and follows the same rule: the spend follows the doubt.
 
 ## Consequences

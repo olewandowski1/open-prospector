@@ -417,6 +417,11 @@ function recordDecisionEvent(
   runBusinessId: string,
   status: CommittedIdentity["status"],
 ): void {
+  const confirmation = input.evaluation.signals.includes("ContactRouteConfirmed")
+    ? " A confirming search found the Contact Route the report missed."
+    : input.evaluation.signals.includes("ContactRouteSearchFoundNone")
+      ? " A confirming search found no Contact Route."
+      : ""
   database
     .prepare(
       `insert into technical_run_events
@@ -430,9 +435,9 @@ function recordDecisionEvent(
       input.taskId,
       input.discoveredBusinessId,
       runBusinessId,
-      status === "Eligible"
+      (status === "Eligible"
         ? "Public signals corroborated a locally controlled business identity."
-        : "Public signals produced a retained identity or eligibility decision.",
+        : "Public signals produced a retained identity or eligibility decision.") + confirmation,
       JSON.stringify({
         status,
         signals: input.evaluation.signals,

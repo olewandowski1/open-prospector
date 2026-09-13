@@ -16,7 +16,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   twelve, and those businesses were dropped without an assessment while the first run's sources
   published numbers. `CorroborateBusiness` now spends one report call and one structure call, only
   where no other exclusion applies, and records `ContactRouteConfirmed` or
-  `ContactRouteSearchFoundNone` in its decision signals. See
+  `ContactRouteSearchFoundNone` in its decision signals, which the Technical Run Log names. See
   [ADR 0019](docs/adr/0019-confirm-a-missing-contact-route-by-search.md).
 
 - Reassess a Candidate Business from its review panel. The run repeats the discovery record behind

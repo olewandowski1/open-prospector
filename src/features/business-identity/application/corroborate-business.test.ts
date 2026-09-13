@@ -173,6 +173,9 @@ describe("contact route confirmation", () => {
     expect(checkpoint.value.identitySignals).toContain("ContactRouteConfirmed")
     expect(checkpoint.nextTasks?.[0]?.stage).toBe("InspectWebsite")
     expect(readScalar(database.path, "select count(*) from contact_routes")).toBe(1)
+    expect(readDecisionMessage(database.path)).toContain(
+      "A confirming search found the Contact Route the report missed.",
+    )
   })
 
   it("records an unconfirmed search when the business cannot be matched in its report", async () => {
@@ -201,6 +204,9 @@ describe("contact route confirmation", () => {
         "select count(*) from run_businesses where exclusion_code = 'missing-contact'",
       ),
     ).toBe(1)
+    expect(readDecisionMessage(database.path)).toContain(
+      "A confirming search found no Contact Route.",
+    )
   })
 
   // A matched name with no route is still no route; the signal must not claim otherwise.
@@ -224,6 +230,9 @@ describe("contact route confirmation", () => {
     expect(checkpoint.value.status).toBe("Excluded")
     expect(checkpoint.value.identitySignals).toContain("ContactRouteSearchFoundNone")
     expect(checkpoint.value.identitySignals).not.toContain("ContactRouteConfirmed")
+    expect(readDecisionMessage(database.path)).toContain(
+      "A confirming search found no Contact Route.",
+    )
   })
 
   it("spends nothing on a business that is excluded for another reason", async () => {
@@ -325,6 +334,19 @@ async function seedIdentityTask(
 
 function readScalar(databasePath: string, query: string): number {
   return Number(withDatabase(databasePath, (database) => database.prepare(query).pluck().get()))
+}
+
+function readDecisionMessage(databasePath: string): string {
+  return String(
+    withDatabase(databasePath, (database) =>
+      database
+        .prepare(
+          "select message from technical_run_events where kind = 'IdentityDecision' order by created_at desc limit 1",
+        )
+        .pluck()
+        .get(),
+    ),
+  )
 }
 
 function withDatabase<A>(databasePath: string, use: (database: Database.Database) => A): A {
