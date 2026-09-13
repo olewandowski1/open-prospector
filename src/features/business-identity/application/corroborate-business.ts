@@ -114,12 +114,15 @@ function confirmContactRoutes(
   if (structured.centrallyControlled || structured.onlineOnly) return Effect.succeed(skip)
   if (structured.decisionScope !== "Local") return Effect.succeed(skip)
 
+  // The structured locality carries a street and a postcode, which reads as noise in a search.
+  const locality =
+    context.searchBrief.searchArea.displayName.split(",")[0]?.trim() ?? context.searchBrief.location
   const brief: DiscoveryBrief = {
     runtime: context.searchBrief.runtime,
     ...(context.searchBrief.runtimeConfiguration
       ? { runtimeConfiguration: context.searchBrief.runtimeConfiguration }
       : {}),
-    query: `${structured.name} ${structured.locality} kontakt`.trim(),
+    query: `${structured.name} ${locality} kontakt`.trim(),
     category: context.searchBrief.category,
     searchAreaName: context.searchBrief.searchArea.displayName,
     countryCode: context.searchBrief.searchArea.countryCode,

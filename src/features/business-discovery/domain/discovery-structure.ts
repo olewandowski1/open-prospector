@@ -178,8 +178,13 @@ export function verifyAgainstReport(
       return true
     })
 
+    // Rebuilt field by field because a spread of the claim would keep an unverified websiteUrl.
     businesses.push({
-      ...business,
+      name: business.name,
+      locality: business.locality,
+      decisionScope: business.decisionScope,
+      centrallyControlled: business.centrallyControlled,
+      onlineOnly: business.onlineOnly,
       sourceUrls,
       presences,
       contacts,

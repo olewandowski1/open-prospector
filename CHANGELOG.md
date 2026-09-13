@@ -150,6 +150,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Drop a website the report does not support. `verifyAgainstReport` spread the claimed business
+  back into its output before attaching the verified fields, so a `websiteUrl` the verifier had
+  just rejected survived anyway. One run stored `renocarserwis.pl`, which is not a URL, and it
+  produced a false WebsiteConfirmed signal and a website-host identity key from an address nobody
+  had read. The verified business is now rebuilt field by field, which is also what the source,
+  presence and contact fields already did.
+
+- Confirm a missing Contact Route by the Search Area's locality rather than the report's street
+  address. The structured locality reads like `Toruń (Polna 134 lok. 136)`, so the confirming query
+  carried a postcode and a repeated town that the search did not need. In one run that confirmation
+  returned nothing for three businesses whose numbers the corrected query finds.
+
 - Search the planned query, not the category alone. The report prompt named the category and the
   search area but never the query it was built with, so all planned discovery angles produced the
   same search, and the `ConfirmAbsentWebsite` confirmation that

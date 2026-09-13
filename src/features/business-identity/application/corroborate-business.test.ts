@@ -3,6 +3,7 @@ import { Effect } from "effect"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type {
+  DiscoveryBrief,
   DiscoveryRuntime,
   DiscoveryStructure,
   StructuredBusiness,
@@ -160,11 +161,15 @@ describe("contact route confirmation", () => {
     const database = createMigratedTestDatabase()
     databases.push(database)
     const task = await seedIdentityTask(database.path, "contact-found", withoutContacts())
+    let requested: DiscoveryBrief | undefined
 
     const checkpoint = await Effect.runPromise(
       executor(database.path, {
         identifier: "fixture-confirmation",
-        report: () => Effect.succeed(report),
+        report: (brief) => {
+          requested = brief
+          return Effect.succeed(report)
+        },
         structure: () => Effect.succeed(confirming),
       })(task),
     )
@@ -176,6 +181,8 @@ describe("contact route confirmation", () => {
     expect(readDecisionMessage(database.path)).toContain(
       "A confirming search found the Contact Route the report missed.",
     )
+    // The stored locality carries a street and postcode, which must not reach the search.
+    expect(requested?.query).toBe("Gabinet Uśmiech Kraków kontakt")
   })
 
   it("records an unconfirmed search when the business cannot be matched in its report", async () => {
@@ -274,7 +281,7 @@ function business(telephone = "+48123456789", site = "https://usmiech.pl/"): Str
 function withoutContacts(): StructuredBusiness {
   return {
     name: "Gabinet Uśmiech",
-    locality: "Kraków",
+    locality: "Kraków (ul. Testowa 1, 30-001 Kraków)",
     decisionScope: "Local",
     centrallyControlled: false,
     onlineOnly: false,

@@ -76,6 +76,37 @@ describe("discovery structure verification", () => {
     ])
   })
 
+  // The spread of the claim kept an unverified websiteUrl even when this branch set it to none.
+  it("drops a website the report does not support", () => {
+    const { businesses, rejections } = verify([
+      business({
+        name: "Fryzjernia Krasa",
+        websiteUrl: "https://invented.example/krasa",
+        sourceUrls: ["https://www.fryzjerniakrasa.pl/"],
+      }),
+    ])
+
+    expect(businesses[0]).not.toHaveProperty("websiteUrl")
+    expect(rejections).toContainEqual(
+      expect.objectContaining({ kind: "website", reason: "not-in-report" }),
+    )
+  })
+
+  it("drops a website that is not a public address", () => {
+    const { businesses, rejections } = verify([
+      business({
+        name: "Fryzjernia Krasa",
+        websiteUrl: "fryzjerniakrasa.pl",
+        sourceUrls: ["https://www.fryzjerniakrasa.pl/"],
+      }),
+    ])
+
+    expect(businesses[0]).not.toHaveProperty("websiteUrl")
+    expect(rejections).toContainEqual(
+      expect.objectContaining({ kind: "website", reason: "not-public-http" }),
+    )
+  })
+
   // The failure that made this necessary: one salon's telephone shown against another salon.
   it("drops a contact the report never wrote down", () => {
     const { businesses, rejections } = verify([
