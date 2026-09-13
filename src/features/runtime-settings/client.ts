@@ -1,6 +1,7 @@
 export {
   defaultRuntimeExecutionConfiguration,
   type RuntimeExecutionConfiguration,
+  type RuntimeModelCatalog,
   type RuntimeModelOption,
   type RuntimeReasoningEffort,
   resolveRuntimeConfiguration,
@@ -13,6 +14,8 @@ export type {
   RuntimeReadiness,
 } from "@/features/runtime-settings/application/runtime-readiness"
 export {
+  groupRuntimeModelOptions,
+  type RuntimeModelGroup,
   reasoningEffortLabel,
   runtimeExecutionLabel,
   runtimeModelLabel,

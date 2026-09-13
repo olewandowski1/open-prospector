@@ -3,6 +3,7 @@ import { Context, Data, Effect, Option } from "effect"
 import {
   defaultRuntimeExecutionConfiguration,
   type RuntimeExecutionConfiguration,
+  type RuntimeModelOption,
 } from "@/features/runtime-settings/application/runtime-execution-configuration"
 import type { RuntimeId } from "@/features/runtime-settings/application/runtime-readiness"
 
@@ -38,10 +39,13 @@ export const getSelectedRuntime = Effect.map(getSelectedRuntimePreference, (pref
   Option.map(preference, ({ runtimeId }) => runtimeId),
 )
 
-export const setSelectedRuntime = (runtimeId: RuntimeId) =>
+export const setSelectedRuntime = (
+  runtimeId: RuntimeId,
+  modelOptions?: readonly RuntimeModelOption[],
+) =>
   setSelectedRuntimePreference({
     runtimeId,
-    configuration: defaultRuntimeExecutionConfiguration(runtimeId),
+    configuration: defaultRuntimeExecutionConfiguration(runtimeId, modelOptions),
   })
 
 export const setSelectedRuntimePreference = (preference: SelectedRuntimePreference) =>

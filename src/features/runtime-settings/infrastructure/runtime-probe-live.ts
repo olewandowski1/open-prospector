@@ -27,6 +27,7 @@ export function executeRuntimeCommand(
   arguments_: readonly string[],
   environment: RuntimeEnvironment = process.env,
   timeoutMilliseconds = COMMAND_TIMEOUT_MILLISECONDS,
+  outputLimitBytes = COMMAND_OUTPUT_LIMIT_BYTES,
 ): Effect.Effect<RuntimeCommandResult, RuntimeCommandError> {
   return Effect.async<RuntimeCommandResult, RuntimeCommandError>((resume) => {
     let child: ChildProcessByStdio<null, Readable, Readable>
@@ -55,7 +56,7 @@ export function executeRuntimeCommand(
 
     const collect = (target: Buffer[], chunk: Buffer): void => {
       outputBytes += chunk.byteLength
-      if (outputBytes > COMMAND_OUTPUT_LIMIT_BYTES) {
+      if (outputBytes > outputLimitBytes) {
         terminateRuntimeProcessTree(child)
         finish(Effect.fail(new RuntimeCommandError({ reason: "output-limit" })))
         return
@@ -157,5 +158,12 @@ function executableCandidates(
 
 export const RuntimeProbeLive = Layer.succeed(RuntimeProbe, {
   resolveExecutable: (runtimeId) => resolveRuntimeExecutable(runtimeId),
-  execute: (executable, arguments_) => executeRuntimeCommand(executable, arguments_),
+  execute: (executable, arguments_, limits) =>
+    executeRuntimeCommand(
+      executable,
+      arguments_,
+      process.env,
+      limits?.timeoutMilliseconds,
+      limits?.outputLimitBytes,
+    ),
 })

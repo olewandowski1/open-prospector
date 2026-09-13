@@ -11,7 +11,11 @@ import { SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/compon
 import { Skeleton } from "@/components/ui/skeleton"
 import type { SearchBriefDefaults } from "@/features/prospecting-runs/application/prospecting-run"
 import { SearchBriefForm } from "@/features/prospecting-runs/presentation/search-brief-form"
-import type { RuntimeId, RuntimeReadiness } from "@/features/runtime-settings/client"
+import type {
+  RuntimeId,
+  RuntimeModelCatalog,
+  RuntimeReadiness,
+} from "@/features/runtime-settings/client"
 
 const skeletonFieldIds = ["primary", "secondary", "tertiary"] as const
 
@@ -20,7 +24,10 @@ type SearchBriefBootstrap = Readonly<{
   selectedRuntime?: RuntimeId
 }>
 
-type RuntimeOptions = Readonly<{ runtimes: readonly RuntimeReadiness[] }>
+type RuntimeOptions = Readonly<{
+  runtimes: readonly RuntimeReadiness[]
+  modelCatalog?: RuntimeModelCatalog
+}>
 
 export function NewRunSheet() {
   const [attempt, setAttempt] = useState(0)
@@ -103,6 +110,7 @@ function NewRunBootstrap({ onRetry }: { onRetry: () => void }) {
     <SearchBriefForm
       defaults={bootstrap.defaults}
       readyRuntimes={runtimeOptions?.runtimes.filter((runtime) => runtime.status === "Ready") ?? []}
+      modelCatalog={runtimeOptions?.modelCatalog}
       runtimeLoading={!runtimeOptions && !runtimeError}
       runtimeError={runtimeError}
       selectedRuntime={bootstrap.selectedRuntime}

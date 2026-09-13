@@ -19,24 +19,28 @@ import { SearchBriefFields } from "@/features/prospecting-runs/presentation/sear
 import {
   defaultRuntimeExecutionConfiguration,
   type RuntimeId,
+  type RuntimeModelCatalog,
   type RuntimeReadiness,
+  runtimeModelOptions,
 } from "@/features/runtime-settings/client"
 
 export function SearchBriefForm({
   defaults,
   readyRuntimes,
+  modelCatalog,
   runtimeLoading,
   runtimeError,
   selectedRuntime,
 }: {
   defaults?: SearchBriefDefaults
   readyRuntimes: readonly RuntimeReadiness[]
+  modelCatalog?: RuntimeModelCatalog
   runtimeLoading: boolean
   runtimeError: string
   selectedRuntime?: RuntimeId
 }) {
   const [draft, setDraft] = useState<SearchBriefDraftState>(() =>
-    initialSearchBriefDraft(defaults, readyRuntimes, selectedRuntime),
+    initialSearchBriefDraft(defaults, readyRuntimes, selectedRuntime, modelCatalog),
   )
   const [preflight, setPreflight] = useState<SearchBriefPreflight>()
   const [selectedAreaId, setSelectedAreaId] = useState("")
@@ -55,13 +59,22 @@ export function SearchBriefForm({
     ? selectedRuntime
     : readyRuntimes[0]?.runtimeId
   const effectiveDraft = useMemo<SearchBriefDraftState>(() => {
-    if (draft.runtime || !preferredRuntime) return draft
-    return {
-      ...draft,
-      runtime: preferredRuntime,
-      ...defaultRuntimeExecutionConfiguration(preferredRuntime),
+    const runtime = draft.runtime || preferredRuntime
+    if (!runtime) return draft
+    const options = runtimeModelOptions(runtime, modelCatalog)
+    if (runtime === draft.runtime && options.some((option) => option.value === draft.model)) {
+      return draft
     }
-  }, [draft, preferredRuntime])
+    const configuration = defaultRuntimeExecutionConfiguration(runtime, options)
+    if (
+      runtime === draft.runtime &&
+      configuration.model === draft.model &&
+      configuration.reasoningEffort === draft.reasoningEffort
+    ) {
+      return draft
+    }
+    return { ...draft, runtime, ...configuration }
+  }, [draft, preferredRuntime, modelCatalog])
 
   const invalidate = (next: Partial<SearchBriefDraftState>) => {
     setDraft((current) => ({ ...current, ...next }))
@@ -128,6 +141,7 @@ export function SearchBriefForm({
           <SearchBriefFields
             draft={effectiveDraft}
             readyRuntimes={readyRuntimes}
+            modelCatalog={modelCatalog}
             runtimeLoading={runtimeLoading}
             runtimeError={runtimeError}
             onChange={invalidate}
@@ -136,6 +150,7 @@ export function SearchBriefForm({
           <div ref={preflightSectionRef} className="scroll-mt-2">
             <RunPreflightSection
               preflight={preflight}
+              modelCatalog={modelCatalog}
               selectedAreaId={selectedAreaId}
               onSelectedAreaChange={setSelectedAreaId}
               error={error}
@@ -147,7 +162,11 @@ export function SearchBriefForm({
       {!createdRun ? (
         <SheetFooter className="border-t p-3">
           {!preflight ? (
-            <Button type="submit" form="new-run-brief" disabled={busy || !effectiveDraft.runtime}>
+            <Button
+              type="submit"
+              form="new-run-brief"
+              disabled={busy || !effectiveDraft.runtime || !effectiveDraft.model}
+            >
               <Icon
                 icon={busy ? Loading03Icon : Search01Icon}
                 data-icon="inline-start"

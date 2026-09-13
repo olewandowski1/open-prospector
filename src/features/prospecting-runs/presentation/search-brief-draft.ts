@@ -1,6 +1,7 @@
 import type { SearchBriefDefaults } from "@/features/prospecting-runs/application/prospecting-run"
 import type {
   RuntimeId,
+  RuntimeModelCatalog,
   RuntimeReadiness,
   RuntimeReasoningEffort,
 } from "@/features/runtime-settings/client"
@@ -32,6 +33,7 @@ export function initialSearchBriefDraft(
   defaults: SearchBriefDefaults | undefined,
   readyRuntimes: readonly RuntimeReadiness[],
   selectedRuntime: RuntimeId | undefined,
+  modelCatalog?: RuntimeModelCatalog,
 ): SearchBriefDraftState {
   const defaultCategory = defaults?.category ?? "Dental clinics"
   const categoryIsPreset = categoryPresets.some(
@@ -41,7 +43,7 @@ export function initialSearchBriefDraft(
     ? selectedRuntime
     : readyRuntimes[0]?.runtimeId
   const configuration = preferredRuntime
-    ? defaultRuntimeExecutionConfiguration(preferredRuntime)
+    ? defaultRuntimeExecutionConfiguration(preferredRuntime, modelCatalog?.[preferredRuntime])
     : { model: "", reasoningEffort: "medium" as const }
   return {
     location: "",

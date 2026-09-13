@@ -12,7 +12,10 @@ import {
 } from "@/features/overview"
 import { getCandidateSummary, getRecentCandidates } from "@/features/review-queue"
 import { listPersistedRuns } from "@/features/run-monitoring/server/run-services"
-import { isRuntimeExecutionConfiguration } from "@/features/runtime-settings/application/runtime-execution-configuration"
+import {
+  defaultRuntimeExecutionConfiguration,
+  isRuntimeExecutionConfiguration,
+} from "@/features/runtime-settings/application/runtime-execution-configuration"
 import {
   getSelectedRuntimePreference,
   setSelectedRuntimePreference,
@@ -21,6 +24,7 @@ import {
   getAllRuntimeReadiness,
   isRuntimeId,
 } from "@/features/runtime-settings/application/runtime-readiness"
+import { getRuntimeModelCatalog } from "@/features/runtime-settings/infrastructure/runtime-model-catalog-live"
 import { runtimePreferenceLive } from "@/features/runtime-settings/infrastructure/runtime-preference-live"
 import { RuntimeProbeLive } from "@/features/runtime-settings/infrastructure/runtime-probe-live"
 
@@ -31,7 +35,10 @@ async function saveSteering(steering: RuntimeSteering): Promise<void> {
   const { runtimeId, model, reasoningEffort } = steering
   if (!isRuntimeId(runtimeId)) return
   const configuration = { model, reasoningEffort }
-  if (!isRuntimeExecutionConfiguration(runtimeId, configuration)) return
+  const modelCatalog = await Effect.runPromise(
+    getRuntimeModelCatalog.pipe(Effect.provide(RuntimeProbeLive)),
+  )
+  if (!isRuntimeExecutionConfiguration(runtimeId, configuration, modelCatalog[runtimeId])) return
 
   const config = loadLocalApplicationConfig()
   await Effect.runPromise(
@@ -43,18 +50,35 @@ async function saveSteering(steering: RuntimeSteering): Promise<void> {
 
 async function SteeringPanel() {
   const config = loadLocalApplicationConfig()
-  const [runtimes, preference] = await Promise.all([
+  const [runtimes, preference, modelCatalog] = await Promise.all([
     Effect.runPromise(getAllRuntimeReadiness.pipe(Effect.provide(RuntimeProbeLive))),
     Effect.runPromise(
       getSelectedRuntimePreference.pipe(Effect.provide(runtimePreferenceLive(config.databasePath))),
     ),
+    Effect.runPromise(getRuntimeModelCatalog.pipe(Effect.provide(RuntimeProbeLive))),
   ])
   const selected = Option.getOrUndefined(preference)
+  const steering: RuntimeSteering | undefined = selected
+    ? {
+        runtimeId: selected.runtimeId,
+        ...(isRuntimeExecutionConfiguration(
+          selected.runtimeId,
+          selected.configuration,
+          modelCatalog[selected.runtimeId],
+        )
+          ? selected.configuration
+          : defaultRuntimeExecutionConfiguration(
+              selected.runtimeId,
+              modelCatalog[selected.runtimeId],
+            )),
+      }
+    : undefined
 
   return (
     <RuntimeSteeringPanel
       runtimes={runtimes}
-      steering={selected ? { runtimeId: selected.runtimeId, ...selected.configuration } : undefined}
+      modelCatalog={modelCatalog}
+      steering={steering}
       saveSteering={saveSteering}
     />
   )

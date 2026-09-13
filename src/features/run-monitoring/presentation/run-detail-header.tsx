@@ -27,7 +27,11 @@ import {
   runStatusPresentation,
 } from "@/features/run-monitoring/presentation/run-presentation"
 import { RunProgressFunnel } from "@/features/run-monitoring/presentation/run-progress-funnel"
-import { RuntimeProviderIcon, runtimeExecutionLabel } from "@/features/runtime-settings/client"
+import {
+  type RuntimeModelOption,
+  RuntimeProviderIcon,
+  runtimeExecutionLabel,
+} from "@/features/runtime-settings/client"
 import { RunDeleteDialog } from "@/features/workspace-administration/client"
 import { cn } from "@/lib/utils"
 
@@ -42,6 +46,7 @@ const statusTextClass = {
 
 export function RunDetailHeader({
   run,
+  modelOptions,
   now,
   busy,
   refreshing,
@@ -49,6 +54,7 @@ export function RunDetailHeader({
   onRefresh,
 }: {
   run: RunDetail
+  modelOptions?: readonly RuntimeModelOption[]
   now: Date
   busy: boolean
   refreshing: boolean
@@ -146,7 +152,7 @@ export function RunDetailHeader({
               <RuntimeProviderIcon runtimeId={run.searchBrief.runtime} />
               <span className="truncate">
                 {configuration
-                  ? runtimeExecutionLabel(run.searchBrief.runtime, configuration)
+                  ? runtimeExecutionLabel(run.searchBrief.runtime, configuration, modelOptions)
                   : "Model Not Recorded"}
               </span>
             </span>

@@ -33,6 +33,20 @@ describe("runtime probe infrastructure", () => {
     if (Either.isLeft(result)) expect(result.left.reason).toBe("output-limit")
   })
 
+  it("accepts a larger output limit for a model catalog read", async () => {
+    const result = await Effect.runPromise(
+      executeRuntimeCommand(
+        process.execPath,
+        ["-e", `process.stdout.write("x".repeat(${70 * 1024}))`],
+        process.env,
+        5_000,
+        1024 * 1024,
+      ),
+    )
+
+    expect(result.stdout).toHaveLength(70 * 1024)
+  })
+
   it("interrupts a command through the Effect timeout", async () => {
     const result = await Effect.runPromise(
       Effect.either(

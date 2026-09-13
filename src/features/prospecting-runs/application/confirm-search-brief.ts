@@ -6,7 +6,7 @@ import {
   prepareSearchBrief,
   type SearchBriefPreflight,
 } from "@/features/prospecting-runs/application/search-brief-preflight"
-import type { RuntimeReadiness } from "@/features/runtime-settings"
+import type { RuntimeModelOption, RuntimeReadiness } from "@/features/runtime-settings"
 
 export class SearchBriefConfirmationError extends Data.TaggedError("SearchBriefConfirmationError")<{
   readonly reason: "preflight-failed" | "search-area-not-selected"
@@ -18,9 +18,10 @@ export const confirmSearchBrief = (
   requestId: string,
   dependencies: readonly DependencyReadiness[],
   runtime: RuntimeReadiness,
+  modelOptions?: readonly RuntimeModelOption[],
 ) =>
   Effect.gen(function* () {
-    const preflight = yield* prepareSearchBrief(input, dependencies, runtime)
+    const preflight = yield* prepareSearchBrief(input, dependencies, runtime, modelOptions)
     yield* requireReady(preflight)
     const searchArea = preflight.searchAreas.find(
       (candidate) => candidate.id === selectedSearchAreaId,

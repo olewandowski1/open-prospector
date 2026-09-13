@@ -49,8 +49,13 @@ test.describe("OpenCode discovery smoke", () => {
 
       await page.getByRole("combobox", { name: "Subscription Runtime" }).click(act)
       await page.getByRole("option", { name: "OpenCode" }).click()
-      await expect(page.getByRole("combobox", { name: "Model" })).toContainText("Ox Alpha Free")
-      await expect(page.getByText("Not applicable")).toBeVisible()
+      // The installed CLI owns the catalog, so assert a model was reported rather than its name.
+      await expect(page.getByRole("combobox", { name: "Model" })).not.toContainText(
+        "No Models Reported",
+      )
+      await expect(page.getByRole("combobox", { name: "Model" })).not.toContainText(
+        "Select A Model",
+      )
 
       await page.getByRole("button", { name: "Check preflight" }).click()
 
@@ -62,7 +67,7 @@ test.describe("OpenCode discovery smoke", () => {
       const cityArea = areaRadios.first()
       await expect(cityArea).toBeVisible({ timeout: 30_000 })
       await cityArea.click()
-      await expect(page.getByText(/OpenCode · Ox Alpha Free · High reasoning/u)).toBeVisible()
+      await expect(page.getByText(/^OpenCode: /u)).toBeVisible()
 
       const confirmButton = page.getByRole("button", { name: "Confirm and create run" })
       await expect(confirmButton).toBeEnabled()

@@ -28,6 +28,11 @@ export type RuntimeCommandResult = Readonly<{
   stderr: string
 }>
 
+export type RuntimeCommandLimits = Readonly<{
+  timeoutMilliseconds: number
+  outputLimitBytes: number
+}>
+
 export class RuntimeCommandError extends Data.TaggedError("RuntimeCommandError")<{
   readonly reason: "spawn" | "timeout" | "output-limit"
 }> {}
@@ -37,6 +42,7 @@ export interface RuntimeProbeService {
   readonly execute: (
     executable: string,
     arguments_: readonly string[],
+    limits?: RuntimeCommandLimits,
   ) => Effect.Effect<RuntimeCommandResult, RuntimeCommandError>
 }
 

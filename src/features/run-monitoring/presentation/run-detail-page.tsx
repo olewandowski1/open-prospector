@@ -14,6 +14,7 @@ import { RunBusinessesTable } from "@/features/run-monitoring/presentation/run-b
 import { RunDetailHeader } from "@/features/run-monitoring/presentation/run-detail-header"
 import { isRunTerminal } from "@/features/run-monitoring/presentation/run-detail-presentation"
 import { TechnicalLogSheet } from "@/features/run-monitoring/presentation/technical-log-panel"
+import { type RuntimeModelCatalog, runtimeModelOptions } from "@/features/runtime-settings/client"
 
 export function RunDetailPage({ runId, initialRun }: { runId: string; initialRun?: RunDetail }) {
   const queryClient = useQueryClient()
@@ -23,6 +24,11 @@ export function RunDetailPage({ runId, initialRun }: { runId: string; initialRun
     queryFn: () => fetchRun(runId),
     ...(initialRun ? { initialData: initialRun } : {}),
     refetchInterval: (state) => (isRunTerminal(state.state.data) ? false : 1_500),
+  })
+  const modelCatalog = useQuery({
+    queryKey: ["runtime-model-catalog"],
+    queryFn: fetchModelCatalog,
+    staleTime: Number.POSITIVE_INFINITY,
   })
   const control = useMutation({
     mutationFn: (value: RunControl) => controlRun(runId, value),
@@ -65,6 +71,7 @@ export function RunDetailPage({ runId, initialRun }: { runId: string; initialRun
 
       <RunDetailHeader
         run={run}
+        modelOptions={runtimeModelOptions(run.searchBrief.runtime, modelCatalog.data)}
         now={new Date()}
         busy={control.isPending}
         refreshing={query.isFetching}
@@ -103,6 +110,13 @@ async function fetchRun(runId: string): Promise<RunDetail> {
   const response = await fetch(`/api/runs/${encodeURIComponent(runId)}`)
   if (!response.ok) throw new Error("run unavailable")
   return (await response.json()) as RunDetail
+}
+
+async function fetchModelCatalog(): Promise<RuntimeModelCatalog | undefined> {
+  const response = await fetch("/api/runtimes/models")
+  if (!response.ok) return undefined
+  const body = (await response.json()) as { modelCatalog?: RuntimeModelCatalog }
+  return body.modelCatalog
 }
 
 async function controlRun(runId: string, control: RunControl): Promise<void> {

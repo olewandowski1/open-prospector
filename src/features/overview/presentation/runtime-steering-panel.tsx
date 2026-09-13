@@ -20,12 +20,15 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
 import {
   defaultRuntimeExecutionConfiguration,
+  groupRuntimeModelOptions,
   type RuntimeId,
+  type RuntimeModelCatalog,
   RuntimeProviderIcon,
   type RuntimeReadiness,
   type RuntimeReasoningEffort,
@@ -44,9 +47,9 @@ export type RuntimeSteering = Readonly<{
 
 const fieldSpacing = "gap-1"
 
-const steeringOf = (runtimeId: RuntimeId): RuntimeSteering => ({
+const steeringOf = (runtimeId: RuntimeId, modelCatalog?: RuntimeModelCatalog): RuntimeSteering => ({
   runtimeId,
-  ...defaultRuntimeExecutionConfiguration(runtimeId),
+  ...defaultRuntimeExecutionConfiguration(runtimeId, modelCatalog?.[runtimeId]),
 })
 
 const isSameSteering = (left: RuntimeSteering, right?: RuntimeSteering) =>
@@ -56,25 +59,27 @@ const isSameSteering = (left: RuntimeSteering, right?: RuntimeSteering) =>
 
 export function RuntimeSteeringPanel({
   runtimes,
+  modelCatalog,
   steering,
   saveSteering,
 }: {
   runtimes: readonly RuntimeReadiness[]
+  modelCatalog?: RuntimeModelCatalog
   steering?: RuntimeSteering
   saveSteering: (steering: RuntimeSteering) => Promise<void>
 }) {
   const readyRuntimes = runtimes.filter((runtime) => runtime.status === "Ready")
   const fallbackRuntime = readyRuntimes[0]?.runtimeId
   const [draft, setDraft] = useState<RuntimeSteering | undefined>(
-    steering ?? (fallbackRuntime ? steeringOf(fallbackRuntime) : undefined),
+    steering ?? (fallbackRuntime ? steeringOf(fallbackRuntime, modelCatalog) : undefined),
   )
   const [saved, setSaved] = useState(steering)
   const [error, setError] = useState("")
   const [pending, startTransition] = useTransition()
 
   const selectedRuntime = runtimes.find((runtime) => runtime.runtimeId === draft?.runtimeId)
-  const models = draft ? runtimeModelOptions(draft.runtimeId) : []
-  const efforts = draft ? runtimeReasoningEfforts(draft.runtimeId, draft.model) : []
+  const models = draft ? runtimeModelOptions(draft.runtimeId, modelCatalog) : []
+  const efforts = draft ? runtimeReasoningEfforts(draft.runtimeId, draft.model, models) : []
   const unchanged = draft !== undefined && isSameSteering(draft, saved)
 
   const selectModel = (model: string) =>
@@ -82,7 +87,7 @@ export function RuntimeSteeringPanel({
       (current) =>
         current && {
           runtimeId: current.runtimeId,
-          ...resolveRuntimeConfiguration(current.runtimeId, model, current.reasoningEffort),
+          ...resolveRuntimeConfiguration(current.runtimeId, model, current.reasoningEffort, models),
         },
     )
 
@@ -143,7 +148,9 @@ export function RuntimeSteeringPanel({
                   value: runtime.runtimeId,
                 }))}
                 value={draft.runtimeId}
-                onValueChange={(value) => value && setDraft(steeringOf(value as RuntimeId))}
+                onValueChange={(value) =>
+                  value && setDraft(steeringOf(value as RuntimeId, modelCatalog))
+                }
               >
                 <SelectTrigger
                   id="steering-runtime"
@@ -194,25 +201,38 @@ export function RuntimeSteeringPanel({
                 value={draft.model}
                 onValueChange={(value) => value && selectModel(value)}
               >
-                <SelectTrigger id="steering-model" aria-label="Model" className="w-full">
+                <SelectTrigger
+                  id="steering-model"
+                  aria-label="Model"
+                  className="w-full"
+                  disabled={models.length === 0}
+                >
                   <SelectValue>
-                    {(value: string | null) => (
-                      <>
-                        <RuntimeProviderIcon runtimeId={draft.runtimeId} />
-                        {models.find((model) => model.value === value)?.label ?? "Select a model"}
-                      </>
-                    )}
+                    {(value: string | null) => {
+                      const model = models.find((candidate) => candidate.value === value)
+                      const label =
+                        model?.label ?? (models.length === 0 ? "No Models Reported" : value)
+                      return (
+                        <>
+                          <RuntimeProviderIcon runtimeId={draft.runtimeId} />
+                          {label}
+                        </>
+                      )
+                    }}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectGroup>
-                    {models.map((model) => (
-                      <SelectItem key={model.value} value={model.value}>
-                        <RuntimeProviderIcon runtimeId={draft.runtimeId} />
-                        {model.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
+                  {groupRuntimeModelOptions(models).map((group, index) => (
+                    <SelectGroup key={group.label ?? `ungrouped-${index}`}>
+                      {group.label ? <SelectLabel>{group.label}</SelectLabel> : null}
+                      {group.options.map((model) => (
+                        <SelectItem key={model.value} value={model.value}>
+                          <RuntimeProviderIcon runtimeId={draft.runtimeId} />
+                          {model.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))}
                 </SelectContent>
               </Select>
             </Field>

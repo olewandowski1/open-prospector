@@ -20,7 +20,7 @@ import {
   type SearchBriefDraftState,
 } from "@/features/prospecting-runs/presentation/search-brief-draft"
 import { SearchBriefRuntimeFields } from "@/features/prospecting-runs/presentation/search-brief-runtime-fields"
-import type { RuntimeReadiness } from "@/features/runtime-settings/client"
+import type { RuntimeModelCatalog, RuntimeReadiness } from "@/features/runtime-settings/client"
 
 const categoryLabels: Record<(typeof categoryPresets)[number], string> = {
   "Dental clinics": "Dental Clinics",
@@ -34,6 +34,7 @@ const categoryLabels: Record<(typeof categoryPresets)[number], string> = {
 export function SearchBriefFields({
   draft,
   readyRuntimes,
+  modelCatalog,
   runtimeLoading,
   runtimeError,
   onChange,
@@ -41,6 +42,7 @@ export function SearchBriefFields({
 }: {
   draft: SearchBriefDraftState
   readyRuntimes: readonly RuntimeReadiness[]
+  modelCatalog?: RuntimeModelCatalog
   runtimeLoading: boolean
   runtimeError: string
   onChange: (next: Partial<SearchBriefDraftState>) => void
@@ -61,6 +63,7 @@ export function SearchBriefFields({
           <SearchBriefRuntimeFields
             draft={draft}
             readyRuntimes={readyRuntimes}
+            modelCatalog={modelCatalog}
             loading={runtimeLoading}
             error={runtimeError}
             onChange={onChange}

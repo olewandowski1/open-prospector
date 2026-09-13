@@ -13,6 +13,7 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -20,7 +21,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import type { SearchBriefDraftState } from "@/features/prospecting-runs/presentation/search-brief-draft"
 import {
   defaultRuntimeExecutionConfiguration,
+  groupRuntimeModelOptions,
   type RuntimeId,
+  type RuntimeModelCatalog,
+  type RuntimeModelOption,
   RuntimeProviderIcon,
   type RuntimeReadiness,
   type RuntimeReasoningEffort,
@@ -33,12 +37,14 @@ import {
 export function SearchBriefRuntimeFields({
   draft,
   readyRuntimes,
+  modelCatalog,
   loading,
   error,
   onChange,
 }: {
   draft: SearchBriefDraftState
   readyRuntimes: readonly RuntimeReadiness[]
+  modelCatalog?: RuntimeModelCatalog
   loading: boolean
   error: string
   onChange: (next: Partial<SearchBriefDraftState>) => void
@@ -47,7 +53,10 @@ export function SearchBriefRuntimeFields({
     () => readyRuntimes.map((runtime) => ({ label: runtime.label, value: runtime.runtimeId })),
     [readyRuntimes],
   )
-  const selectedEfforts = draft.runtime ? runtimeReasoningEfforts(draft.runtime, draft.model) : []
+  const modelOptions = draft.runtime ? runtimeModelOptions(draft.runtime, modelCatalog) : []
+  const selectedEfforts = draft.runtime
+    ? runtimeReasoningEfforts(draft.runtime, draft.model, modelOptions)
+    : []
 
   return (
     <>
@@ -76,12 +85,14 @@ export function SearchBriefRuntimeFields({
           <RuntimeProviderField
             draft={draft}
             readyRuntimes={readyRuntimes}
+            modelCatalog={modelCatalog}
             runtimeItems={runtimeItems}
             onChange={onChange}
           />
           {draft.runtime ? (
             <RuntimeConfigurationFields
               draft={draft}
+              modelOptions={modelOptions}
               selectedEfforts={selectedEfforts}
               onChange={onChange}
             />
@@ -104,11 +115,13 @@ function RuntimeSectionHeading() {
 function RuntimeProviderField({
   draft,
   readyRuntimes,
+  modelCatalog,
   runtimeItems,
   onChange,
 }: {
   draft: SearchBriefDraftState
   readyRuntimes: readonly RuntimeReadiness[]
+  modelCatalog?: RuntimeModelCatalog
   runtimeItems: readonly Readonly<{ label: string; value: RuntimeId }>[]
   onChange: (next: Partial<SearchBriefDraftState>) => void
 }) {
@@ -122,7 +135,10 @@ function RuntimeProviderField({
           value &&
           onChange({
             runtime: value as RuntimeId,
-            ...defaultRuntimeExecutionConfiguration(value as RuntimeId),
+            ...defaultRuntimeExecutionConfiguration(
+              value as RuntimeId,
+              modelCatalog?.[value as RuntimeId],
+            ),
           })
         }
       >
@@ -162,16 +178,19 @@ function RuntimeProviderField({
 
 function RuntimeConfigurationFields({
   draft,
+  modelOptions,
   selectedEfforts,
   onChange,
 }: {
   draft: SearchBriefDraftState
+  modelOptions: readonly RuntimeModelOption[]
   selectedEfforts: readonly RuntimeReasoningEffort[]
   onChange: (next: Partial<SearchBriefDraftState>) => void
 }) {
   if (!draft.runtime) return null
   const runtime = draft.runtime
-  const models = runtimeModelOptions(runtime)
+  const models = modelOptions
+  const selected = models.find((model) => model.value === draft.model)
   return (
     <div className="grid gap-5 sm:grid-cols-2">
       <Field>
@@ -179,36 +198,57 @@ function RuntimeConfigurationFields({
           htmlFor="runtime-model"
           label="Model"
           description={
-            models.find((model) => model.value === draft.model)?.detail ??
-            "The selected model ID is pinned for this run."
+            selected?.detail ??
+            (models.length === 0
+              ? "The installed CLI reported no models."
+              : "The selected model ID is pinned for this run.")
           }
         />
         <Select
           items={models.map((model) => ({ label: model.label, value: model.value }))}
           value={draft.model}
           onValueChange={(value) =>
-            value && onChange(resolveRuntimeConfiguration(runtime, value, draft.reasoningEffort))
+            value &&
+            onChange(resolveRuntimeConfiguration(runtime, value, draft.reasoningEffort, models))
           }
         >
-          <SelectTrigger id="runtime-model" aria-label="Model" className="w-full">
+          <SelectTrigger
+            id="runtime-model"
+            aria-label="Model"
+            className="w-full"
+            disabled={models.length === 0}
+          >
             <SelectValue>
-              {(value: string | null) => (
-                <>
-                  <RuntimeProviderIcon runtimeId={runtime} />
-                  {models.find((model) => model.value === value)?.label ?? "Select A Model"}
-                </>
-              )}
+              {(value: string | null) => {
+                const model = models.find((candidate) => candidate.value === value)
+                const label =
+                  model?.label ??
+                  (value === null || value === ""
+                    ? models.length === 0
+                      ? "No Models Reported"
+                      : "Select A Model"
+                    : value)
+                return (
+                  <>
+                    <RuntimeProviderIcon runtimeId={runtime} />
+                    {label}
+                  </>
+                )
+              }}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectGroup>
-              {models.map((model) => (
-                <SelectItem key={model.value} value={model.value}>
-                  <RuntimeProviderIcon runtimeId={runtime} />
-                  {model.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
+            {groupRuntimeModelOptions(models).map((group, index) => (
+              <SelectGroup key={group.label ?? `ungrouped-${index}`}>
+                {group.label ? <SelectLabel>{group.label}</SelectLabel> : null}
+                {group.options.map((model) => (
+                  <SelectItem key={model.value} value={model.value}>
+                    <RuntimeProviderIcon runtimeId={runtime} />
+                    {model.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ))}
           </SelectContent>
         </Select>
       </Field>

@@ -15,18 +15,24 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import type { SearchBriefPreflight } from "@/features/prospecting-runs/application/search-brief-preflight"
-import { runtimeExecutionLabel } from "@/features/runtime-settings/client"
+import {
+  type RuntimeModelCatalog,
+  runtimeExecutionLabel,
+  runtimeModelOptions,
+} from "@/features/runtime-settings/client"
 import { cn } from "@/lib/utils"
 
 // Render the complete preflight outcome as one document section inside the New Run sheet.
 export function RunPreflightSection({
   preflight,
+  modelCatalog,
   selectedAreaId,
   onSelectedAreaChange,
   error,
   createdRun,
 }: {
   preflight?: SearchBriefPreflight
+  modelCatalog?: RuntimeModelCatalog
   selectedAreaId: string
   onSelectedAreaChange: (value: string) => void
   error: string
@@ -65,7 +71,7 @@ export function RunPreflightSection({
               onSelectedAreaChange={onSelectedAreaChange}
             />
             <DependencyReadiness preflight={preflight} />
-            <WorkloadEstimate preflight={preflight} />
+            <WorkloadEstimate preflight={preflight} modelCatalog={modelCatalog} />
             {createdRun ? (
               <Alert>
                 <Icon icon={CheckmarkCircle02Icon} />
@@ -178,7 +184,13 @@ function DependencyReadiness({ preflight }: { preflight: SearchBriefPreflight })
   )
 }
 
-function WorkloadEstimate({ preflight }: { preflight: SearchBriefPreflight }) {
+function WorkloadEstimate({
+  preflight,
+  modelCatalog,
+}: {
+  preflight: SearchBriefPreflight
+  modelCatalog?: RuntimeModelCatalog
+}) {
   return (
     <section aria-labelledby="estimate-title">
       <h2 id="estimate-title" className="flex items-center gap-2 text-sm font-semibold">
@@ -192,7 +204,11 @@ function WorkloadEstimate({ preflight }: { preflight: SearchBriefPreflight }) {
       {preflight.draft.runtimeConfiguration ? (
         <p className="mt-2 text-xs font-medium">
           {preflight.runtime.label}:{" "}
-          {runtimeExecutionLabel(preflight.draft.runtime, preflight.draft.runtimeConfiguration)}
+          {runtimeExecutionLabel(
+            preflight.draft.runtime,
+            preflight.draft.runtimeConfiguration,
+            runtimeModelOptions(preflight.draft.runtime, modelCatalog),
+          )}
         </p>
       ) : null}
     </section>

@@ -6,7 +6,11 @@ import {
   type SearchArea,
   type SearchBriefDraft,
 } from "@/features/prospecting-runs/domain/search-brief"
-import { isRuntimeExecutionConfiguration, type RuntimeReadiness } from "@/features/runtime-settings"
+import {
+  isRuntimeExecutionConfiguration,
+  type RuntimeModelOption,
+  type RuntimeReadiness,
+} from "@/features/runtime-settings"
 
 export class GeocodingError extends Data.TaggedError("GeocodingError")<{
   readonly reason: "unreachable" | "unsupported-response"
@@ -41,6 +45,7 @@ export const prepareSearchBrief = (
   input: unknown,
   dependencies: readonly DependencyReadiness[],
   runtime: RuntimeReadiness,
+  modelOptions?: readonly RuntimeModelOption[],
 ) =>
   Effect.gen(function* () {
     const draft = yield* decodeSearchBriefDraft(input)
@@ -51,7 +56,7 @@ export const prepareSearchBrief = (
       dependencies.every((dependency) => dependency.status === "Ready") &&
       runtime.runtimeId === draft.runtime &&
       runtime.status === "Ready" &&
-      isRuntimeExecutionConfiguration(draft.runtime, draft.runtimeConfiguration)
+      isRuntimeExecutionConfiguration(draft.runtime, draft.runtimeConfiguration, modelOptions)
 
     return {
       draft,
