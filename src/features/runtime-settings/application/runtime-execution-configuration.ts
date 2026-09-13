@@ -89,9 +89,11 @@ export const fallbackRuntimeModelCatalog: RuntimeModelCatalog = {
   opencode: [],
 }
 
+// A preferred model keeps the default stable when the CLI orders its catalog differently.
 const preferredDefaultModels: Partial<Readonly<Record<RuntimeId, string>>> = {
   codex: "gpt-5.6-luna",
   claude: "claude-sonnet-5",
+  opencode: "opencode-go/deepseek-v4.1-flash",
 }
 
 const preferredDefaultEfforts: Readonly<Record<RuntimeId, RuntimeReasoningEffort>> = {

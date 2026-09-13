@@ -21,10 +21,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Read the Codex and OpenCode model lists from their installed CLIs instead of the checked-in
   manifest, which still offered the retired Ox Alpha Free and knew none of the OpenCode Go catalog.
-  The OpenCode picker keeps only the `opencode-go` provider, so the list is whatever the
-  subscription reports (27 models in one workspace), with no provider credentials it is empty rather
-  than showing another plan's models, and a CLI that cannot be read falls back to the checked-in
-  list. Claude stays curated because `claude` has no command that lists models.
+  The OpenCode picker keeps only the `opencode-go` provider and defaults to DeepSeek V4.1 Flash, so
+  the list is whatever the subscription reports (27 models in one workspace), with no provider
+  credentials it is empty rather than showing another plan's models, and a CLI that cannot be read
+  falls back to the checked-in list. Claude stays curated because `claude` has no command that lists
+  models.
 
 - Confirm an absent website by searching for that one business, in a new `ConfirmAbsentWebsite`
   stage between inspection and assessment. It spends nothing when the business already carries two

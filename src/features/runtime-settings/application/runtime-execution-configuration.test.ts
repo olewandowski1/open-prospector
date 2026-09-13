@@ -127,6 +127,30 @@ describe("runtime execution configuration", () => {
     })
   })
 
+  it("prefers the product default model when the catalog carries it", () => {
+    const options: readonly RuntimeModelOption[] = [
+      {
+        value: "opencode-go/hy3",
+        label: "Hy3",
+        detail: "Reported by the installed OpenCode CLI.",
+        reasoningEfforts: [],
+        group: "OpenCode Go",
+      },
+      {
+        value: "opencode-go/deepseek-v4.1-flash",
+        label: "DeepSeek V4.1 Flash",
+        detail: "Reported by the installed OpenCode CLI.",
+        reasoningEfforts: ["low", "high", "max"],
+        group: "OpenCode Go",
+      },
+    ]
+
+    expect(defaultRuntimeExecutionConfiguration("opencode", options)).toEqual({
+      model: "opencode-go/deepseek-v4.1-flash",
+      reasoningEffort: "high",
+    })
+  })
+
   it("keeps a preferred effort the new model still supports", () => {
     expect(resolveRuntimeConfiguration("claude", "claude-opus-5", "max")).toEqual({
       model: "claude-opus-5",
