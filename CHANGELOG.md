@@ -9,6 +9,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Confirm a missing Contact Route by one bounded search before a business is excluded for not having
+  one. Two Car repair garage runs in Toruń an hour apart, on the same model and Search Brief,
+  qualified 8 candidates against 0. The second read directories that hide numbers behind
+  "Pokaż numer telefonu", its report said plainly that it saw no contact for seven businesses of
+  twelve, and those businesses were dropped without an assessment while the first run's sources
+  published numbers. `CorroborateBusiness` now spends one report call and one structure call, only
+  where no other exclusion applies, and records `ContactRouteConfirmed` or
+  `ContactRouteSearchFoundNone` in its decision signals. See
+  [ADR 0019](docs/adr/0019-confirm-a-missing-contact-route-by-search.md).
+
 - Reassess a Candidate Business from its review panel. The run repeats the discovery record behind
   the score, verifies contact routes, inspects the website again, then assesses and scores it,
   writing new records and keeping the earlier findings. It repeats the market and runtime of the run
@@ -139,6 +149,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Document private vulnerability reporting and enable it for the repository.
 
 ### Fixed
+
+- Search the planned query, not the category alone. The report prompt named the category and the
+  search area but never the query it was built with, so all planned discovery angles produced the
+  same search, and the `ConfirmAbsentWebsite` confirmation that
+  [ADR 0018](docs/adr/0018-confirm-an-absent-website-by-search.md) says searches for one business by
+  name searched the market again instead. The prompt now searches `brief.query`.
+
+- Say "reported or confirmed" in the missing-contact exclusion reason. It claimed that Contact
+  Routes had failed verification when, for a report that named none at all, none had ever been
+  checked.
 
 - Keep a business whose telephone was reported from more than one page. Contact routes are unique per
   business, type and value, so the same number arriving from two pages aborted the whole corroboration

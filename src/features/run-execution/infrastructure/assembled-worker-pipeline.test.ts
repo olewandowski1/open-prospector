@@ -230,7 +230,10 @@ function assembledWorkerLayer(
     discoveryRepository,
   )
   const identityRepository = makeSqliteIdentityRepository(databasePath)
-  const executeIdentity = makeIdentityTaskExecutor(identityRepository)
+  const executeIdentity = makeIdentityTaskExecutor(
+    identityRepository,
+    discoveryRuntime(Boolean(options.blockDiscovery)),
+  )
   const executeAbsenceConfirmation = makeAbsenceConfirmationExecutor(
     identityRepository,
     discoveryRuntime(Boolean(options.blockDiscovery)),

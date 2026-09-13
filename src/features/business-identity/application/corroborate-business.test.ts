@@ -1,8 +1,12 @@
 import Database from "better-sqlite3"
 import { Effect } from "effect"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
-import type { StructuredBusiness } from "@/features/business-discovery"
+import type {
+  DiscoveryRuntime,
+  DiscoveryStructure,
+  StructuredBusiness,
+} from "@/features/business-discovery"
 import { makeSqliteDiscoveryRepository } from "@/features/business-discovery"
 import { makeIdentityTaskExecutor } from "@/features/business-identity/application/corroborate-business"
 import { makeSqliteIdentityRepository } from "@/features/business-identity/infrastructure/sqlite-identity-repository"
@@ -10,6 +14,16 @@ import type { SearchBrief } from "@/features/prospecting-runs"
 import type { RunTask } from "@/features/run-execution"
 import { createMigratedTestDatabase } from "@/test-support/local-database"
 import { createTestProspectingRun } from "@/test-support/prospecting-run"
+
+const unreachableRuntime: DiscoveryRuntime = {
+  identifier: "unreachable",
+  report: () => Effect.die("the confirming search should not run"),
+  structure: () => Effect.die("the confirming search should not run"),
+}
+
+function executor(databasePath: string, runtime: DiscoveryRuntime = unreachableRuntime) {
+  return makeIdentityTaskExecutor(makeSqliteIdentityRepository(databasePath), runtime)
+}
 
 const databases: ReturnType<typeof createMigratedTestDatabase>[] = []
 afterEach(() => {
@@ -22,9 +36,7 @@ describe("business identity workflow", () => {
     databases.push(database)
     const task = await seedIdentityTask(database.path, "identity-eligible", business())
 
-    const checkpoint = await Effect.runPromise(
-      makeIdentityTaskExecutor(makeSqliteIdentityRepository(database.path))(task),
-    )
+    const checkpoint = await Effect.runPromise(executor(database.path)(task))
 
     expect(checkpoint).toMatchObject({ value: { status: "Eligible", contactRoutes: 1 } })
     expect(checkpoint.nextTasks).toEqual([
@@ -37,7 +49,7 @@ describe("business identity workflow", () => {
   it("reuses one canonical identity across runs keyed on the telephone", async () => {
     const database = createMigratedTestDatabase()
     databases.push(database)
-    const execute = makeIdentityTaskExecutor(makeSqliteIdentityRepository(database.path))
+    const execute = executor(database.path)
 
     for (const requestId of ["identity-run-one", "identity-run-two"]) {
       const task = await seedIdentityTask(database.path, requestId, business())
@@ -52,7 +64,7 @@ describe("business identity workflow", () => {
   it("keeps same-name businesses distinct when they share no route", async () => {
     const database = createMigratedTestDatabase()
     databases.push(database)
-    const execute = makeIdentityTaskExecutor(makeSqliteIdentityRepository(database.path))
+    const execute = executor(database.path)
 
     await Effect.runPromise(
       execute(await seedIdentityTask(database.path, "phone-one", business("+48123456789"))),
@@ -77,7 +89,7 @@ describe("business identity workflow", () => {
   it("recognises a business by a route it shares, though the telephone differs", async () => {
     const database = createMigratedTestDatabase()
     databases.push(database)
-    const execute = makeIdentityTaskExecutor(makeSqliteIdentityRepository(database.path))
+    const execute = executor(database.path)
 
     await Effect.runPromise(
       execute(await seedIdentityTask(database.path, "route-one", business("+48123456789"))),
@@ -97,9 +109,7 @@ describe("business identity workflow", () => {
       centrallyControlled: true,
     })
 
-    const checkpoint = await Effect.runPromise(
-      makeIdentityTaskExecutor(makeSqliteIdentityRepository(database.path))(task),
-    )
+    const checkpoint = await Effect.runPromise(executor(database.path)(task))
 
     expect(checkpoint.value.status).toBe("Excluded")
     expect(checkpoint.nextTasks).toBeUndefined()
@@ -113,11 +123,128 @@ describe("business identity workflow", () => {
       sqlite.prepare("update discovered_businesses set structured = null").run(),
     )
 
-    const failure = await Effect.runPromise(
-      Effect.flip(makeIdentityTaskExecutor(makeSqliteIdentityRepository(database.path))(task)),
-    )
+    const failure = await Effect.runPromise(Effect.flip(executor(database.path)(task)))
 
     expect(failure.code).toBe("missing-structured-business")
+  })
+})
+
+describe("contact route confirmation", () => {
+  const report = ["Gabinet Uśmiech", "https://katalog.test/usmiech", "Telefon: 601 234 567"].join(
+    "\n",
+  )
+
+  const confirming: DiscoveryStructure = {
+    schemaVersion: "discovery-structure-v1",
+    businesses: [
+      {
+        name: "Gabinet Uśmiech",
+        locality: "Kraków",
+        decisionScope: "Local",
+        centrallyControlled: false,
+        onlineOnly: false,
+        sourceUrls: ["https://katalog.test/usmiech"],
+        presences: [],
+        contacts: [
+          {
+            type: "BusinessTelephone",
+            value: "601 234 567",
+            sourceUrl: "https://katalog.test/usmiech",
+          },
+        ],
+      },
+    ],
+  }
+
+  it("spends one search and keeps a business whose Contact Route the report missed", async () => {
+    const database = createMigratedTestDatabase()
+    databases.push(database)
+    const task = await seedIdentityTask(database.path, "contact-found", withoutContacts())
+
+    const checkpoint = await Effect.runPromise(
+      executor(database.path, {
+        identifier: "fixture-confirmation",
+        report: () => Effect.succeed(report),
+        structure: () => Effect.succeed(confirming),
+      })(task),
+    )
+
+    expect(checkpoint).toMatchObject({ value: { status: "Eligible", contactRoutes: 1 } })
+    expect(checkpoint.value.identitySignals).toContain("ContactRouteConfirmed")
+    expect(checkpoint.nextTasks?.[0]?.stage).toBe("InspectWebsite")
+    expect(readScalar(database.path, "select count(*) from contact_routes")).toBe(1)
+  })
+
+  it("records an unconfirmed search when the business cannot be matched in its report", async () => {
+    const database = createMigratedTestDatabase()
+    databases.push(database)
+    const task = await seedIdentityTask(database.path, "contact-missing", withoutContacts())
+
+    const checkpoint = await Effect.runPromise(
+      executor(database.path, {
+        identifier: "fixture-confirmation",
+        report: () => Effect.succeed("Inny Warsztat\nhttps://katalog.test/inny\ntel. 601 234 567"),
+        structure: () =>
+          Effect.succeed({
+            ...confirming,
+            businesses: [{ ...confirming.businesses[0], name: "Inny Warsztat" }],
+          }),
+      })(task),
+    )
+
+    expect(checkpoint.value.status).toBe("Excluded")
+    expect(checkpoint.value.identitySignals).toContain("ContactRouteSearchFoundNone")
+    expect(checkpoint.nextTasks).toBeUndefined()
+    expect(
+      readScalar(
+        database.path,
+        "select count(*) from run_businesses where exclusion_code = 'missing-contact'",
+      ),
+    ).toBe(1)
+  })
+
+  // A matched name with no route is still no route; the signal must not claim otherwise.
+  it("records an unconfirmed search when the matched report names no route either", async () => {
+    const database = createMigratedTestDatabase()
+    databases.push(database)
+    const task = await seedIdentityTask(database.path, "contact-still-missing", withoutContacts())
+
+    const checkpoint = await Effect.runPromise(
+      executor(database.path, {
+        identifier: "fixture-confirmation",
+        report: () => Effect.succeed(report),
+        structure: () =>
+          Effect.succeed({
+            ...confirming,
+            businesses: [{ ...confirming.businesses[0], contacts: [] }],
+          }),
+      })(task),
+    )
+
+    expect(checkpoint.value.status).toBe("Excluded")
+    expect(checkpoint.value.identitySignals).toContain("ContactRouteSearchFoundNone")
+    expect(checkpoint.value.identitySignals).not.toContain("ContactRouteConfirmed")
+  })
+
+  it("spends nothing on a business that is excluded for another reason", async () => {
+    const database = createMigratedTestDatabase()
+    databases.push(database)
+    const task = await seedIdentityTask(database.path, "contact-chain", {
+      ...withoutContacts(),
+      centrallyControlled: true,
+    })
+    const search = vi.fn()
+    const runtime = {
+      identifier: "fixture-confirmation",
+      report: search,
+      structure: search,
+    } as unknown as DiscoveryRuntime
+
+    const checkpoint = await Effect.runPromise(executor(database.path, runtime)(task))
+
+    expect(search).not.toHaveBeenCalled()
+    expect(checkpoint.value.status).toBe("Excluded")
+    expect(checkpoint.value.identitySignals).not.toContain("ContactRouteConfirmed")
   })
 })
 
@@ -132,6 +259,19 @@ function business(telephone = "+48123456789", site = "https://usmiech.pl/"): Str
     sourceUrls: [site],
     presences: [{ type: "Website", url: site }],
     contacts: [{ type: "BusinessTelephone", value: telephone, sourceUrl: site }],
+  }
+}
+
+function withoutContacts(): StructuredBusiness {
+  return {
+    name: "Gabinet Uśmiech",
+    locality: "Kraków",
+    decisionScope: "Local",
+    centrallyControlled: false,
+    onlineOnly: false,
+    sourceUrls: ["https://katalog.test/usmiech"],
+    presences: [],
+    contacts: [],
   }
 }
 

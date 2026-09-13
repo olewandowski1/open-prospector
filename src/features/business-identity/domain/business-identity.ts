@@ -119,7 +119,8 @@ export function evaluateBusinessIdentity(input: IdentityInput): IdentityEvaluati
       decisionScope: "Local",
       canonicalFingerprint,
       exclusionCode: "missing-contact",
-      exclusionReason: "No public business Contact Route survived verification against the report.",
+      exclusionReason:
+        "No public business Contact Route was reported or confirmed for this business.",
     }
   }
 

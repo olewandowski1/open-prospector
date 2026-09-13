@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  buildReportPrompt,
   buildStructurePrompt,
   type DiscoveryBrief,
 } from "@/features/business-discovery/application/discovery-runtime"
@@ -16,6 +17,29 @@ const brief: DiscoveryBrief = {
 }
 
 const report = "## Kwiaciarnia Stokrotka\nhttps://przyklad.test/stokrotka\n"
+
+describe("buildReportPrompt", () => {
+  it("searches the planned query rather than the category alone", () => {
+    const prompt = buildReportPrompt({
+      ...brief,
+      query: "Kwiaciarnie kontakt Reda",
+    })
+
+    expect(prompt).toContain("Search the public web for: Kwiaciarnie kontakt Reda.")
+    expect(prompt).toContain("The market is Kwiaciarnie in Reda, Polska; search in Polish.")
+  })
+
+  it("searches for the one business a confirmation names", () => {
+    const prompt = buildReportPrompt({
+      ...brief,
+      query: "Kwiaciarnia Stokrotka Reda",
+      wanted: 1,
+    })
+
+    expect(prompt).toContain("Search the public web for: Kwiaciarnia Stokrotka Reda.")
+    expect(prompt).toContain("Aim to identify around 1 distinct businesses.")
+  })
+})
 
 describe("buildStructurePrompt", () => {
   it("spells the schema out for a runtime that cannot be handed one", () => {

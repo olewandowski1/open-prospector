@@ -59,7 +59,7 @@ const program = Effect.gen(function* () {
   const executeDiscovery = makeDiscoveryTaskExecutor(discoveryRuntime, discoveryRepository)
   const executeReassessmentSeed = makeReassessmentSeedTaskExecutor(discoveryRepository)
   const identityRepository = makeSqliteIdentityRepository(localConfig.databasePath)
-  const executeIdentity = makeIdentityTaskExecutor(identityRepository)
+  const executeIdentity = makeIdentityTaskExecutor(identityRepository, discoveryRuntime)
   const executeAbsenceConfirmation = makeAbsenceConfirmationExecutor(
     identityRepository,
     discoveryRuntime,
